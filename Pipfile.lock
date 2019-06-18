@@ -1,0 +1,24 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "09d531eeff1eae9be9a353243c94d2bc0ef36afec458843d6f45532c392aab11"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "3.7"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://pypi.org/simple",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {
+        "kfp": {
+            "file": "https://storage.googleapis.com/ml-pipeline/release/0.1.21/kfp.tar.gz"
+        }
+    },
+    "develop": {}
+}
