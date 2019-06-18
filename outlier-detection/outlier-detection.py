@@ -39,11 +39,11 @@ def od_pipeline():
     def data_collection():
         return dsl.ContainerOp(
             name='Data collection',
-            image='jameswong/demo:data-collector-od',
+            image='jameswong/demo:data-collector-od2',
             command=['sh', '-c'],
-            arguments=['cp $0 $1/$0', '1460290.json', mount],
+            arguments=['cp /app/$0 $1/$0 && touch /app/results.txt && ls -l /app && ls -l $1', '1460290.json', mount],
             file_outputs={
-                'data': '/tmp/results.txt',
+                'data': '/app/results.txt',
             },
             pvolumes={mount: vop.volume}
         )
@@ -52,9 +52,13 @@ def od_pipeline():
         return dsl.ContainerOp(
             name="Outlier Detection",
             image='jameswong/demo:outlier-detection',
-            # command=["python", "--account_id"],
             command=["sh", "-c"],
-            arguments=["ls -al $0", mount],
+            arguments=[
+                "ls -al $0 && python start.py --input_path $0/$2 --output_path $0 --job_id 1",
+                mount,
+                input,
+                '1460290.json',
+            ],
             pvolumes={mount: vop.volume}
         )
     
