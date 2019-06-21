@@ -1,0 +1,110 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: outlier-detection-pipeline-
+spec:
+  arguments:
+    parameters: []
+  entrypoint: outlier-detection-pipeline
+  serviceAccountName: pipeline-runner
+  templates:
+  - name: create-pvc
+    outputs:
+      parameters:
+      - name: create-pvc-manifest
+        valueFrom:
+          jsonPath: '{}'
+      - name: create-pvc-name
+        valueFrom:
+          jsonPath: '{.metadata.name}'
+      - name: create-pvc-size
+        valueFrom:
+          jsonPath: '{.status.capacity.storage}'
+    resource:
+      action: create
+      manifest: "apiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: '{{workflow.name}}-my-pvc'\n\
+        spec:\n  accessModes:\n  - ReadWriteMany\n  resources:\n    requests:\n  \
+        \    storage: 2Gi\n"
+  - container:
+      args:
+      - git show --summary && cp /app/*.json $0 && touch /app/results.txt && ls -l
+        /app
+      - /mnt
+      command:
+      - sh
+      - -c
+      image: jameswong/data-collector:latest
+      volumeMounts:
+      - mountPath: /mnt
+        name: create-pvc
+    inputs:
+      parameters:
+      - name: create-pvc-name
+    name: data-collection
+    outputs:
+      artifacts:
+      - name: mlpipeline-ui-metadata
+        optional: true
+        path: /mlpipeline-ui-metadata.json
+      - name: mlpipeline-metrics
+        optional: true
+        path: /mlpipeline-metrics.json
+      parameters:
+      - name: data-collection-data
+        valueFrom:
+          path: /app/results.txt
+  - container:
+      args:
+      - git show --summary && ls -al $0 && ls $1 && python start.py --input_path $0/$2
+        --output_path $0 --job_id 1
+      - /mnt
+      - '{{inputs.parameters.data-collection-data}}'
+      - 1212729.json
+      command:
+      - sh
+      - -c
+      image: jameswong/outlier-detection:latest
+      volumeMounts:
+      - mountPath: /mnt
+        name: create-pvc
+    inputs:
+      parameters:
+      - name: create-pvc-name
+      - name: data-collection-data
+    name: outlier-detection
+    outputs:
+      artifacts:
+      - name: mlpipeline-ui-metadata
+        optional: true
+        path: /mlpipeline-ui-metadata.json
+      - name: mlpipeline-metrics
+        optional: true
+        path: /mlpipeline-metrics.json
+  - dag:
+      tasks:
+      - name: create-pvc
+        template: create-pvc
+      - arguments:
+          parameters:
+          - name: create-pvc-name
+            value: '{{tasks.create-pvc.outputs.parameters.create-pvc-name}}'
+        dependencies:
+        - create-pvc
+        name: data-collection
+        template: data-collection
+      - arguments:
+          parameters:
+          - name: create-pvc-name
+            value: '{{tasks.create-pvc.outputs.parameters.create-pvc-name}}'
+          - name: data-collection-data
+            value: '{{tasks.data-collection.outputs.parameters.data-collection-data}}'
+        dependencies:
+        - create-pvc
+        - data-collection
+        name: outlier-detection
+        template: outlier-detection
+    name: outlier-detection-pipeline
+  volumes:
+  - name: create-pvc
+    persistentVolumeClaim:
+      claimName: '{{inputs.parameters.create-pvc-name}}'

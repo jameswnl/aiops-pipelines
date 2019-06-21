@@ -41,7 +41,7 @@ def od_pipeline():
             name='Data collection',
             image='jameswong/data-collector:latest',
             command=['sh', '-c'],
-            arguments=['cp /app/*.json $0 && touch /app/results.txt && ls -l /app', mount],
+            arguments=['git show --summary && cp /app/*.json $0 && touch /app/results.txt && ls -l /app', mount],
             file_outputs={
                 'data': '/app/results.txt',
             },
@@ -54,7 +54,7 @@ def od_pipeline():
             image='jameswong/outlier-detection:latest',
             command=["sh", "-c"],
             arguments=[
-                "ls -al $0 && ls $1 && python start.py --input_path $0/$2 --output_path $0 --job_id 1",
+                "git show --summary && ls -al $0 && ls $1 && python start.py --input_path $0/$2 --output_path $0 --job_id 1",
                 mount,
                 input,
                 '1212729.json',
@@ -62,8 +62,8 @@ def od_pipeline():
             pvolumes={mount: vop.volume}
         )
     
-    collect_task = data_collection()
-    detection_task = detection(collect_task.output)
+    collect_task = data_collection().set_image_pull_policy('Always')
+    detection_task = detection(collect_task.output).set_image_pull_policy('Always')
 
 if __name__ == '__main__':
     print(__file__ + '.zip')
