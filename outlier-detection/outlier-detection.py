@@ -35,13 +35,12 @@ def od_pipeline():
         modes=dsl.VOLUME_MODE_RWM
     )
 
-    
     def data_collection():
         return dsl.ContainerOp(
             name='Data collection',
-            image='jameswong/data-collector:latest',
+            image='jameswong/data-collector:next',
             command=['sh', '-c'],
-            arguments=['git show --summary && cp /app/*.json $0 && touch /app/results.txt && ls -l /app', mount],
+            arguments=['git show --summary && ls -l $0 && cp /app/*.json $0 && touch /app/results.txt && ls -l $0 ', mount],
             file_outputs={
                 'data': '/app/results.txt',
             },
@@ -51,19 +50,18 @@ def od_pipeline():
     def detection(input):
         return dsl.ContainerOp(
             name="Outlier Detection",
-            image='jameswong/outlier-detection:latest',
+            image='jameswong/outlier-detection:next7',
             command=["sh", "-c"],
             arguments=[
-                "git show --summary && ls -al $0 && ls $1 && python start.py --input_path $0/$2 --output_path $0 --job_id 1",
+                "git show --summary && ls -al $0 && python start.py --input_path $0/$1 --output_path $0 --job_id 1 && ls -al $0",
                 mount,
-                input,
-                '1212729.json',
+                '1212729.json',  # will be parameterized
             ],
             pvolumes={mount: vop.volume}
         )
     
     collect_task = data_collection().set_image_pull_policy('Always')
-    detection_task = detection(collect_task.output).set_image_pull_policy('Always')
+    detection_task = detection(collect_task.output).set_image_pull_policy('Always').after(collect_task)
 
 if __name__ == '__main__':
     print(__file__ + '.zip')
