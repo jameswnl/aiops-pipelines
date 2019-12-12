@@ -7,6 +7,7 @@ verify_ssl = true
 
 [packages]
 kfp = {file = "https://storage.googleapis.com/ml-pipeline/release/0.1.21/kfp.tar.gz"}
+seldon-core = "*"
 
 [requires]
 python_version = "3.7"
